@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -19,8 +20,9 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
     [MethodImpl(256)] int cnt_safe(Node t) { return t.cnt; }
     [MethodImpl(256)] static uint rand_prior() => (uint)rnd.Next(int.MinValue, int.MaxValue);
     public int Count => cnt_safe(root);
-    protected void push(Node tt) { }
-    [MethodImpl(256)] protected void upd(Node tt) { tt.cnt = cnt_safe(tt.left) + cnt_safe(tt.right) + 1; }
+    [MethodImpl(256)] protected void push(Node t) { }
+    [MethodImpl(256)] protected void upd(Node t) { }
+    [MethodImpl(256)] protected void add_cnt(Node t, int delt) { t.cnt += delt; }
     [MethodImpl(256)] protected int Compare(T v1, T v2) => Comparer<T>.Default.Compare(v1, v2);
     public T this[int key] {
         get => get_at(key).node;
@@ -92,36 +94,50 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
         }
         return false;
     }
-    public int CountOfElement(T node) => Contains(node) ? 1 : 0;
+    public int CountOf(T node) => Contains(node) ? 1 : 0;
+
     protected bool _Add(T node, bool skip_if_equal = false) {
         bool added = false;
         Node func(Node t) {
             if (is_nil(t)) {
                 added = true;
-                return new Node() { node = node }; // no need to upd
+                return new Node() { node = node }; 
             }
             push(t);
             int cmp = Compare(node, t.node);
-            if (skip_if_equal && cmp == 0) return t; // no need to upd
+            if (skip_if_equal && cmp == 0) return t; 
             if (cmp <= 0) {
                 var res = func(t.left);
-                if (res != t.left) { // произошла смена
-                    t.left = res;
-                    if (t.prior < res.prior) {
-                        t = rotate_left(t);
+                if(t.prior < res.prior) { // added=true, rotate
+                    var res_right = res.right;
+                    res.right = t;
+                    t.left = res_right;
+                    add_cnt(res, 1);
+                    //add_cnt(t, 1 - 1); // no need upd cnt for t
+                    return res;
+                } else {
+                    if (added) {
+                        add_cnt(t, 1);
+                        t.left = res;  // can be change
                     }
+                    return t;
                 }
             } else {
                 var res = func(t.right);
-                if (res != t.right) { // произошла смена
-                    t.right = res;
-                    if (t.prior < res.prior) {
-                        t = rotate_right(t);
+                if (t.prior < res.prior) { //rotate
+                    var res_left = res.left;
+                    res.left = t;
+                    t.right = res_left;
+                    add_cnt(res, 1);
+                    return res;
+                } else {
+                    if (added) {
+                        add_cnt(t, 1);
+                        t.right = res;
                     }
+                    return t;
                 }
             }
-            upd(t);
-            return t;
         }
         root = func(root);
         return added;
@@ -135,75 +151,64 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
             int cmp = Compare(node, t.node);
             if (cmp == 0) {
                 found = true;
-                t = merge(t.left, t.right);
+                t = merge_check(t.left, t.right);
+                return;
             } else if (cmp < 0) {
                 func(ref t.left);
             } else {
                 func(ref t.right);
             }
-            upd(t); // требуется обновление cnt.
+            if (found) add_cnt(t, -1);
         }
         func(ref root);
         return found;
     }
     public void RemoveAt(int i) {
+        Debug.Assert(i >= 0 && i < Count);
         void func(ref Node t, int key) {
             if (is_nil(t)) return;
             push(t);
             var cur = t.cnt - cnt_safe(t.right);
             if (key == cur) {
-                t = merge(t.left, t.right);
+                t = merge_check(t.left, t.right);
+                return;
             } else if (key < cur) {
                 func(ref t.left, key);
             } else {
                 func(ref t.right, key - cur);
             }
-            upd(t); // требуется обновление cnt.
+            add_cnt(t, -1);
         }
         func(ref root, i + 1);
     }
-    protected Node merge(Node left, Node right) {
-        if (is_nil(left)) {
-            return right;
-        }
-        if (is_nil(right)) {
-            return left;
-        }
+    Node merge_check(Node left, Node right) {
+        if (is_nil(left)) return right;
+        if (is_nil(right)) return left;
+        return merge_no_check(left, right);
+    }
+    protected Node merge_no_check(Node left, Node right) { // both must be not nil
         if (left.prior > right.prior) {
             push(left);
-            left.right = merge(left.right, right);
-            upd(left);
+            add_cnt(left, right.cnt);
+            left.right = is_nil(left.right) ? right : merge_no_check(left.right, right);
             return left;
+        } else {
+            push(right);
+            add_cnt(right, left.cnt);
+            right.left = is_nil(right.left) ? left : merge_no_check(left, right.left);
+            return right;
         }
-        push(right);
-        right.left = merge(left, right.left);
-        upd(right);
-        return right;
-    }
-    Node rotate_right(Node t) {
-        var res = t.right;
-        t.right = res.left;
-        res.left = t;
-        upd(t);
-        return res; // need to update
-    }
-    Node rotate_left(Node t) {
-        var res = t.left;
-        t.left = res.right;
-        res.right = t;
-        upd(t);
-        return res; // need to update
     }
 }
 
 public class SortedMultiList<T> : SortedList<T> where T : new() {
     new public bool Add(T node) => _Add(node, skip_if_equal: false);
-    new public int CountOfElement(T node) {
+    new public int CountOf(T node) {
         var low = BinarySearch_Less(node);
         var high = BinarySearch_More(node);
         return high - low - 1;
     }
-    public int RemoveAll(T node) {
+    public int RemoveAllOf(T node) {
         int cnt = 0;
         void del(ref Node t) {
             if (is_nil(t)) return;
@@ -214,7 +219,7 @@ public class SortedMultiList<T> : SortedList<T> where T : new() {
             cnt++;
             del(ref t.left);
             del(ref t.right);
-            t = merge(t.left, t.right);
+            t = merge_no_check(t.left, t.right);
         }
         void func(ref Node t) {
             if (is_nil(t)) return;
@@ -222,12 +227,13 @@ public class SortedMultiList<T> : SortedList<T> where T : new() {
             int cmp = Compare(node, t.node);
             if (cmp == 0) {
                 del_actual(ref t);
+                return;
             } else if (cmp < 0) {
                 func(ref t.left);
             } else {
                 func(ref t.right);
             }
-            upd(t); // требуется обновление cnt.
+            add_cnt(t, -cnt);
         }
         func(ref root);
         return cnt;
