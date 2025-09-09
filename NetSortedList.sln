@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36109.1 d17.14
+VisualStudioVersion = 17.14.36109.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetSortedList", "NetSortedList.csproj", "{61CCE013-CE15-45B4-9074-6447D3B79E54}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestSortedList", "TestSortedList\TestSortedList.csproj", "{ED2017EA-0D29-43FD-B006-E33241FFBB03}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{61CCE013-CE15-45B4-9074-6447D3B79E54}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{61CCE013-CE15-45B4-9074-6447D3B79E54}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{61CCE013-CE15-45B4-9074-6447D3B79E54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ED2017EA-0D29-43FD-B006-E33241FFBB03}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED2017EA-0D29-43FD-B006-E33241FFBB03}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED2017EA-0D29-43FD-B006-E33241FFBB03}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED2017EA-0D29-43FD-B006-E33241FFBB03}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

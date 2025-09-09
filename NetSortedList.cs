@@ -9,20 +9,19 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
     protected class Node {
         public int cnt = 1;
         public T node = new();
-        public Node left = nil;
-        public Node right = nil;
-        public uint prior = rand_prior();
+        public Node? left = null;// nil;
+        public Node? right = null;// nil;
+        public uint prior = 0;
     }
-    static readonly Node nil = new Node { cnt = 0 };
-    protected Node root = nil;
-    static Random rnd = new();
-    [MethodImpl(256)] protected bool is_nil(Node t) { return ReferenceEquals(t, nil); }
-    [MethodImpl(256)] int cnt_safe(Node t) { return t.cnt; }
+    //static readonly Node nil = new Node { cnt = 0 };
+    protected Node root = null;// nil;
+    static Random rnd = new(1);
+    [MethodImpl(256)] protected bool is_nil(Node t) { return t != null; return ReferenceEquals(t, nil); }
+    [MethodImpl(256)] protected int cnt_safe(Node t) { return t.cnt; }
     [MethodImpl(256)] static uint rand_prior() => (uint)rnd.Next(int.MinValue, int.MaxValue);
     public int Count => cnt_safe(root);
     [MethodImpl(256)] protected void push(Node t) { }
     [MethodImpl(256)] protected void upd(Node t) { }
-    [MethodImpl(256)] protected void add_cnt(Node t, int delt) { t.cnt += delt; }
     [MethodImpl(256)] protected int Compare(T v1, T v2) => Comparer<T>.Default.Compare(v1, v2);
     public T this[int key] {
         get => get_at(key).node;
@@ -101,23 +100,24 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
         Node func(Node t) {
             if (is_nil(t)) {
                 added = true;
-                return new Node() { node = node }; 
+                return new Node() { node = node, prior = rand_prior() }; 
             }
             push(t);
             int cmp = Compare(node, t.node);
-            if (skip_if_equal && cmp == 0) return t; 
+            if (skip_if_equal && cmp == 0) 
+                return t; 
             if (cmp <= 0) {
                 var res = func(t.left);
                 if(t.prior < res.prior) { // added=true, rotate
                     var res_right = res.right;
                     res.right = t;
                     t.left = res_right;
-                    add_cnt(res, 1);
-                    //add_cnt(t, 1 - 1); // no need upd cnt for t
+                    res.cnt = t.cnt + 1;
+                    t.cnt -= cnt_safe(res.left);
                     return res;
                 } else {
                     if (added) {
-                        add_cnt(t, 1);
+                        t.cnt++;
                         t.left = res;  // can be change
                     }
                     return t;
@@ -128,11 +128,12 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
                     var res_left = res.left;
                     res.left = t;
                     t.right = res_left;
-                    add_cnt(res, 1);
+                    res.cnt = t.cnt + 1;
+                    t.cnt -= cnt_safe(res.right);
                     return res;
                 } else {
                     if (added) {
-                        add_cnt(t, 1);
+                        t.cnt++;
                         t.right = res;
                     }
                     return t;
@@ -158,7 +159,7 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
             } else {
                 func(ref t.right);
             }
-            if (found) add_cnt(t, -1);
+            if (found) t.cnt--;
         }
         func(ref root);
         return found;
@@ -177,7 +178,7 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
             } else {
                 func(ref t.right, key - cur);
             }
-            add_cnt(t, -1);
+            t.cnt--;
         }
         func(ref root, i + 1);
     }
@@ -189,12 +190,12 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
     protected Node merge_no_check(Node left, Node right) { // both must be not nil
         if (left.prior > right.prior) {
             push(left);
-            add_cnt(left, right.cnt);
+            left.cnt += right.cnt;
             left.right = is_nil(left.right) ? right : merge_no_check(left.right, right);
             return left;
         } else {
             push(right);
-            add_cnt(right, left.cnt);
+            right.cnt += left.cnt;
             right.left = is_nil(right.left) ? left : merge_no_check(left, right.left);
             return right;
         }
@@ -233,7 +234,7 @@ public class SortedMultiList<T> : SortedList<T> where T : new() {
             } else {
                 func(ref t.right);
             }
-            add_cnt(t, -cnt);
+            t.cnt -= cnt;
         }
         func(ref root);
         return cnt;
