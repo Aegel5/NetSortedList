@@ -1,30 +1,45 @@
 ﻿using System.Collections;
 using System.ComponentModel.Design;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
-namespace AlgoQuora;
+namespace AlgoQuora; 
 
-public class SortedList<T> : IEnumerable<T> where T:new() {
+public class SortedList<T> : IEnumerable<T> where T : new() {
+    public class FastRandom {
+        const uint Y = 842502087, Z = 3579807591, W = 273326509;
+        uint x, y, z, w;
+        public FastRandom() { Reinitialise(Environment.TickCount); }
+        public FastRandom(int seed) { Reinitialise(seed); }
+        public void Reinitialise(int seed) { lock (this) { x = (uint)seed; y = Y; z = Z; w = W; } }
+        public uint NextUInt() {
+            lock (this) {
+                uint t = (x ^ (x << 11));
+                x = y; y = z; z = w;
+                return (w = (w ^ (w >> 19)) ^ (t ^ (t >> 8)));
+            }
+        }
+    }
+
     protected class Node {
         public int cnt = 1;
-        public T node = new();
-        public Node? left = null;// nil;
-        public Node? right = null;// nil;
-        public uint prior = 0;
+        public T val = new();
+        public Node? left;
+        public Node? right;
+        public uint prior;
     }
-    //static readonly Node nil = new Node { cnt = 0 };
-    protected Node root = null;// nil;
-    static Random rnd = new(1);
-    [MethodImpl(256)] protected bool is_nil(Node t) { return t != null; return ReferenceEquals(t, nil); }
-    [MethodImpl(256)] protected int cnt_safe(Node t) { return t.cnt; }
-    [MethodImpl(256)] static uint rand_prior() => (uint)rnd.Next(int.MinValue, int.MaxValue);
+    IComparer<T> comparer = Comparer<T>.Default;
+    protected Node? root;
+    static FastRandom rnd = new();
+    [MethodImpl(256)] protected bool is_nil([NotNullWhen(false)] Node t) { return t == null; }
+    [MethodImpl(256)] protected int cnt_safe(Node t) { return t == null ? 0 : t.cnt; }
     public int Count => cnt_safe(root);
     [MethodImpl(256)] protected void push(Node t) { }
     [MethodImpl(256)] protected void upd(Node t) { }
-    [MethodImpl(256)] protected int Compare(T v1, T v2) => Comparer<T>.Default.Compare(v1, v2);
+    [MethodImpl(256)] protected int Compare(T v1, T v2) => comparer.Compare(v1, v2);
     public T this[int key] {
-        get => get_at(key).node;
+        get => get_at(key).val;
         //set => get_at(key).node = value;
     }
     private Node get_at(int pos) {
@@ -48,7 +63,7 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
         push(t);
         foreach (var item in left_to_right(t.left))
             yield return item;
-        yield return t.node;
+        yield return t.val;
         foreach (var item in left_to_right(t.right))
             yield return item;
     }
@@ -63,7 +78,7 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
             push(t);
             var l_cnt = cnt_safe(t.left);
             if (l <= l_cnt// имеем ли право проверять текущий элемент?
-                && check(t.node)) {  // обычный поиск в дереве. используем технику "последнего верного ответа"
+                && check(t.val)) {  // обычный поиск в дереве. используем технику "последнего верного ответа"
                 res = l_cnt + offset; // верный ответ
                 t = t.left; // идем влево, так как справа 100% уже понятно.
             } else {
@@ -82,7 +97,7 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
     public bool Contains(T node) {
         var t = root;
         while (!is_nil(t)) {
-            int cmp = Compare(node, t.node);
+            int cmp = Compare(node, t.val);
             if (cmp == 0) {
                 return true;
             } else if (cmp < 0) {
@@ -95,25 +110,25 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
     }
     public int CountOf(T node) => Contains(node) ? 1 : 0;
 
-    protected bool _Add(T node, bool skip_if_equal = false) {
+    protected bool _Add(T val, bool skip_if_equal = false) {
         bool added = false;
         Node func(Node t) {
             if (is_nil(t)) {
                 added = true;
-                return new Node() { node = node, prior = rand_prior() }; 
+                return new Node() { val = val, prior = rnd.NextUInt() };
             }
             push(t);
-            int cmp = Compare(node, t.node);
-            if (skip_if_equal && cmp == 0) 
-                return t; 
+            int cmp = Compare(val, t.val);
+            if (skip_if_equal && cmp == 0)
+                return t;
             if (cmp <= 0) {
                 var res = func(t.left);
-                if(t.prior < res.prior) { // added=true, rotate
+                if (t.prior < res.prior) { // added=true, rotate
                     var res_right = res.right;
                     res.right = t;
                     t.left = res_right;
                     res.cnt = t.cnt + 1;
-                    t.cnt -= cnt_safe(res.left);
+                    if (!is_nil(res.left)) t.cnt -= res.left.cnt;
                     return res;
                 } else {
                     if (added) {
@@ -129,7 +144,7 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
                     res.left = t;
                     t.right = res_left;
                     res.cnt = t.cnt + 1;
-                    t.cnt -= cnt_safe(res.right);
+                    if (!is_nil(res.right)) t.cnt -= res.right.cnt;
                     return res;
                 } else {
                     if (added) {
@@ -149,7 +164,7 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
         void func(ref Node t) {
             if (is_nil(t)) return;
             push(t);
-            int cmp = Compare(node, t.node);
+            int cmp = Compare(node, t.val);
             if (cmp == 0) {
                 found = true;
                 t = merge_check(t.left, t.right);
@@ -182,7 +197,7 @@ public class SortedList<T> : IEnumerable<T> where T:new() {
         }
         func(ref root, i + 1);
     }
-    Node merge_check(Node left, Node right) {
+    protected Node merge_check(Node left, Node right) {
         if (is_nil(left)) return right;
         if (is_nil(right)) return left;
         return merge_no_check(left, right);
@@ -210,37 +225,26 @@ public class SortedMultiList<T> : SortedList<T> where T : new() {
         return high - low - 1;
     }
     public int RemoveAllOf(T node) {
-        int cnt = 0;
-        void del(ref Node t) {
-            if (is_nil(t)) return;
-            if (Compare(node, t.node) != 0) return;
-            del_actual(ref t);
-        }
-        void del_actual(ref Node t) {
-            cnt++;
-            del(ref t.left);
-            del(ref t.right);
-            t = merge_no_check(t.left, t.right);
-        }
-        void func(ref Node t) {
-            if (is_nil(t)) return;
+        int func(ref Node t) {
+            if (is_nil(t)) return 0;
             push(t);
-            int cmp = Compare(node, t.node);
+            int cmp = Compare(node, t.val);
+            int cnt = 0;
             if (cmp == 0) {
-                del_actual(ref t);
-                return;
+                cnt += func(ref t.left);
+                cnt += func(ref t.right);
+                t = merge_check(t.left, t.right);
+                return cnt + 1;
             } else if (cmp < 0) {
-                func(ref t.left);
+                cnt = func(ref t.left);
             } else {
-                func(ref t.right);
+                cnt = func(ref t.right);
             }
             t.cnt -= cnt;
+            return cnt;
         }
-        func(ref root);
-        return cnt;
+        return func(ref root);
     }
 }
-
-
 
 
