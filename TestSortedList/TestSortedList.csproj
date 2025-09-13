@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NetSortedList.csproj" />
+    <ProjectReference Include="..\NetSortedList\NetSortedList.csproj" />
   </ItemGroup>
 
 </Project>

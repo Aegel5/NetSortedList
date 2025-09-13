@@ -106,27 +106,54 @@ internal class Program {
         Random rnd = new();
         int next() { return rnd.Next(0, 100); }
         for (int i = 0; i < 100; i++) {
-            SortedList_Tester<int> tester = new();
-            for (int j = 0; j < 1000; j++) {
-                tester.Add(next());
-                tester.Check();
-                tester.Remove(next());
-                tester.Check();
-                if(tester.RemoveAllOf(next()) != 0) {
-                    tester.Check();
-                }
-                tester.CountOf(next());
-                if(tester.Count > 0) {
-                    tester.Get(rnd.Next(0, tester.Count));
+            {
+                SortedList_Tester<int> tester = new();
+                for (int j = 0; j < 1000; j++) {
                     tester.Add(next());
-                    tester.RemoveAt(rnd.Next(0, tester.Count));
                     tester.Check();
+                    tester.Remove(next());
+                    tester.Check();
+                    if (tester.RemoveAllOf(next()) != 0) {
+                        tester.Check();
+                    }
+                    tester.CountOf(next());
+                    if (tester.Count > 0) {
+                        tester.Get(rnd.Next(0, tester.Count));
+                        tester.Add(next());
+                        tester.RemoveAt(rnd.Next(0, tester.Count));
+                        tester.Check();
+                    }
+                    tester.Contains(next());
                 }
-                tester.Contains(next());
+            }
+            {
+                SortedDictionary<int, int> dict = new();
+                SortedMap<int, int> map = new();
+                for (int j = 0; j < 10000; j++) {
+                    for (int u = 0; u < 2; u++) {
+                        var k = next();
+                        var v = next();
+                        dict.TryAdd(k, v);
+                        map.Add(k, v);
+                    }
+                    {
+                        var k = next();
+                        dict.Remove(k);
+                        map.Remove(k);
+                    }
+                }
+                if(!dict.Select(x => x.Key).SequenceEqual(map.Select(x => x.Key))) {
+                    throw new Exception("bad");
+                }
+                if (!dict.Select(x => x.Value).SequenceEqual(map.Select(x => x.Value))) {
+                    throw new Exception("bad");
+                }
+
             }
         }
         Console.WriteLine("Test OK");
     }
+
     static void Main(string[] args) {
 
         //Random rnd = new(848);
@@ -146,6 +173,7 @@ internal class Program {
 public class MyBenchmarks {
     int N = 300000;
 
+
     [Benchmark]
     public void SortedList_AddRemove() {
         Random rnd = new(848);
@@ -162,6 +190,26 @@ public class MyBenchmarks {
         SortedSet<int> list = new();
         for (int i = 0; i < N; i++) {
             list.Add(rnd.Next(0, N));
+            list.Remove(rnd.Next(0, N));
+        }
+    }
+
+    [Benchmark]
+    public void SortedMap_AddRemove() {
+        Random rnd = new(848);
+        SortedMap<int,int> list = new();
+        for (int i = 0; i < N; i++) {
+            list.Add(rnd.Next(0, N), rnd.Next(0,N));
+            list.Remove(rnd.Next(0, N));
+        }
+    }
+
+    [Benchmark]
+    public void SortedDictionary_AddRemove() {
+        Random rnd = new(848);
+        SortedDictionary<int, int> list = new();
+        for (int i = 0; i < N; i++) {
+            list.TryAdd(rnd.Next(0, N), rnd.Next(0, N));
             list.Remove(rnd.Next(0, N));
         }
     }
