@@ -38,8 +38,8 @@ namespace AlgoQuora {
 
         public bool Remove(TKey key) => _Remove(rec(key));
 
-        public MapRecord<TKey, TValue> ByIndex(int i) => get_at(i).val;
-        public ref TValue ByIndexValue(int i) => ref get_at(i).val.Value;
+        public MapRecord<TKey, TValue> ByIndex(Index i) => get_at(i).val;
+        public ref TValue ByIndexValue(Index i) => ref get_at(i).val.Value;
 
         public BSResult More(TKey val, int l = 0, int r = int.MaxValue) => BinarySearch_First(x => CompareKey(x.Key, val) > 0, l, r);
         public BSResult MoreEq(TKey val, int l = 0, int r = int.MaxValue) => BinarySearch_First(x => CompareKey(x.Key, val) >= 0, l, r);

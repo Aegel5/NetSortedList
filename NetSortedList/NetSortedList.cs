@@ -34,10 +34,12 @@ namespace AlgoQuora {
         [MethodImpl(256)] protected bool is_nil([NotNullWhen(false)] Node t) { return t == null; }
         [MethodImpl(256)] protected int cnt_safe(Node t) { return t == null ? 0 : t.cnt; }
         public int Count => cnt_safe(root);
+        public bool IsEmpty => Count == 0;
         [MethodImpl(256)] protected void push(Node t) { }
         [MethodImpl(256)] protected void upd(Node t) { }
         [MethodImpl(256)] protected int Compare(T v1, T v2) => comparer.Compare(v1, v2);
-
+        [MethodImpl(256)] protected int ActualIndex(Index index) => index.IsFromEnd ? Count - index.Value : index.Value;
+        [MethodImpl(256)] protected Node get_at(Index index) => get_at(ActualIndex(index));
         protected Node get_at(int pos) {
             Debug.Assert(pos >= 0 && pos < Count);
             var t = root;
@@ -172,7 +174,8 @@ namespace AlgoQuora {
             }
         }
 
-        public void RemoveAt(int i) {
+        public void RemoveAt(Index index) {
+            var i = ActualIndex(index);
             Debug.Assert(i >= 0 && i < Count);
             void func(ref Node t, int key) {
                 if (is_nil(t)) return;
@@ -254,7 +257,7 @@ namespace AlgoQuora {
 
     public class SortedList<T> : _CartesianBase<T> {
 
-        public T this[int key] {
+        public T this[Index key] {
             get => get_at(key).val;
             //set => get_at(key).node = value;
         }
