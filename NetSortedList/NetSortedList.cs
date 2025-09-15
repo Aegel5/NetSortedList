@@ -5,6 +5,9 @@ using System.Runtime.CompilerServices;
 
 namespace AlgoQuora {
 
+    // https://wcipeg.com/wiki/Size_Balanced_Tree
+    // https://github.com/THEFZNKHAN/balanced-tree-visualizer
+
     public class _CartesianBase<T> : IEnumerable<T> {
         class FastRandom {
             const uint Y = 842502087, Z = 3579807591, W = 273326509;
