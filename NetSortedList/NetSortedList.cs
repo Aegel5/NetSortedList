@@ -5,6 +5,9 @@ using System.Runtime.CompilerServices;
 
 namespace AlgoQuora {
 
+    // https://wcipeg.com/wiki/Size_Balanced_Tree
+    // https://github.com/THEFZNKHAN/balanced-tree-visualizer
+
     public class _CartesianBase<T> : IEnumerable<T> {
         class FastRandom {
             const uint Y = 842502087, Z = 3579807591, W = 273326509;
@@ -72,45 +75,83 @@ namespace AlgoQuora {
         protected (bool added, Node node) _Add(T val, bool skip_if_equal = false) {
             bool added = false;
             Node? result_node = null;
-            Node func(Node t) {
-                if (is_nil(t)) {
+            Node func(Node t)
+            {
+                if (is_nil(t))
+                {
                     added = true;
                     result_node = new Node() { val = val, prior = rnd.NextUInt() };
                     return result_node;
                 }
                 push(t);
                 int cmp = Compare(val, t.val);
-                if (skip_if_equal && cmp == 0) {
+                if (skip_if_equal && cmp == 0)
+                {
                     result_node = t;
                     return t;
                 }
-                if (cmp <= 0) {
+                if (cmp <= 0)
+                {
                     var res = func(t.left);
-                    if (t.prior < res.prior) { // added=true, rotate
-                        var res_right = res.right;
-                        res.right = t;
-                        t.left = res_right;
-                        res.cnt = t.cnt + 1;
-                        if (!is_nil(res.left)) t.cnt -= res.left.cnt;
-                        return res;
-                    } else {
-                        if (added) {
+                    if (t.prior < res.prior)
+                    { // added=true, rotate
+                        var right_cnt = t.cnt - res.cnt;
+                        if (res.cnt <= right_cnt + right_cnt/2)
+                        {
+                            // skip rotation!
+                            (t.prior, res.prior) = (res.prior, t.prior);
+                            t.left = res; // can be changed
+                            if (added) t.cnt++;
+                            return t;
+                        }
+                        else
+                        {
+                            var res_right = res.right;
+                            res.right = t;
+                            t.left = res_right;
+                            res.cnt = t.cnt + 1;
+                            if (!is_nil(res.left)) t.cnt -= res.left.cnt;
+                            return res;
+                        }
+                    }
+                    else
+                    {
+                        if (added)
+                        {
                             t.cnt++;
                             t.left = res;  // can be change
                         }
                         return t;
                     }
-                } else {
+                }
+                else
+                {
                     var res = func(t.right);
-                    if (t.prior < res.prior) { //rotate
-                        var res_left = res.left;
-                        res.left = t;
-                        t.right = res_left;
-                        res.cnt = t.cnt + 1;
-                        if (!is_nil(res.right)) t.cnt -= res.right.cnt;
-                        return res;
-                    } else {
-                        if (added) {
+                    if (t.prior < res.prior)
+                    { //rotate
+                        var left_cnt = t.cnt - res.cnt;
+                        if (res.cnt <= left_cnt + left_cnt/2)
+                        {
+                            // skip rotation!
+                            (t.prior, res.prior) = (res.prior, t.prior);
+                            t.right = res; // can be changed
+                            if (added) t.cnt++;
+                            return t;
+                        }
+                        else
+                        {
+                            var res_left = res.left;
+                            res.left = t;
+                            t.right = res_left;
+                            res.cnt = t.cnt + 1;
+                            if (!is_nil(res.right)) t.cnt -= res.right.cnt;
+                            return res;
+                        }
+                    }
+                    else
+                    {
+                        if (added)
+                        {
                             t.cnt++;
                             t.right = res;
                         }

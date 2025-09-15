@@ -175,7 +175,7 @@ public class MyBenchmarks {
 
 
     [Benchmark]
-    public void SortedList_AddRemove() {
+    public void SortedList_AddRemoveRnd() {
         Random rnd = new(848);
         SortedList<int> list = new();
         for (int i = 0; i < N; i++) {
@@ -185,7 +185,7 @@ public class MyBenchmarks {
     }
 
     [Benchmark]
-    public void SortedSet_AddRemove() {
+    public void SortedSet_AddRemoveRnd() {
         Random rnd = new(848);
         SortedSet<int> list = new();
         for (int i = 0; i < N; i++) {
@@ -195,7 +195,35 @@ public class MyBenchmarks {
     }
 
     [Benchmark]
-    public void SortedMap_AddRemove() {
+    public void SortedList_AddRemoveLast()
+    {
+        SortedList<int> list = new();
+        for (int i = 0; i < N; i++)
+        {
+            list.Add(i);
+        }
+        for (int i = 0; i < N; i++)
+        {
+            list.Remove(i);
+        }
+    }
+
+    [Benchmark]
+    public void SortedSet_AddRemoveLast()
+    {
+        SortedSet<int> list = new();
+        for (int i = 0; i < N; i++)
+        {
+            list.Add(i);
+        }
+        for (int i = 0; i < N; i++)
+        {
+            list.Remove(i);
+        }
+    }
+
+    [Benchmark]
+    public void SortedMap_AddRemoveRnd() {
         Random rnd = new(848);
         SortedMap<int,int> list = new();
         for (int i = 0; i < N; i++) {
