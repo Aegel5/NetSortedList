@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 
 namespace AlgoQuora {
@@ -9,31 +10,14 @@ namespace AlgoQuora {
     // https://github.com/THEFZNKHAN/balanced-tree-visualizer
 
     public class _CartesianBase<T> : IEnumerable<T> {
-        class FastRandom {
-            const uint Y = 842502087, Z = 3579807591, W = 273326509;
-            uint x, y, z, w;
-            public FastRandom() { Reinitialise(Environment.TickCount); }
-            public FastRandom(int seed) { Reinitialise(seed); }
-            public void Reinitialise(int seed) { lock (this) { x = (uint)seed; y = Y; z = Z; w = W; } }
-            public uint NextUInt() {
-                lock (this) {
-                    uint t = (x ^ (x << 11));
-                    x = y; y = z; z = w;
-                    return (w = (w ^ (w >> 19)) ^ (t ^ (t >> 8)));
-                }
-            }
-        }
-
         protected class Node {
             public int cnt = 1;
             public T val;
             public Node? left;
             public Node? right;
-            public uint prior;
         }
         protected IComparer<T> comparer = Comparer<T>.Default;
         protected Node? root;
-        static FastRandom rnd = new();
         [MethodImpl(256)] protected bool is_nil([NotNullWhen(false)] Node t) { return t == null; }
         [MethodImpl(256)] protected int cnt_safe(Node t) { return t == null ? 0 : t.cnt; }
         public int Count => cnt_safe(root);
@@ -43,6 +27,9 @@ namespace AlgoQuora {
         [MethodImpl(256)] protected int Compare(T v1, T v2) => comparer.Compare(v1, v2);
         [MethodImpl(256)] protected int ActualIndex(Index index) => index.IsFromEnd ? Count - index.Value : index.Value;
         [MethodImpl(256)] protected Node get_at(Index index) => get_at(ActualIndex(index));
+        public _CartesianBase() {
+            Clear();
+        }
         protected Node get_at(int pos) {
             Debug.Assert(pos >= 0 && pos < Count);
             var t = root;
@@ -71,97 +58,6 @@ namespace AlgoQuora {
         public IEnumerator<T> GetEnumerator() => left_to_right(root).GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => left_to_right(root).GetEnumerator();
 
-        [MethodImpl(256)]
-        protected (bool added, Node node) _Add(T val, bool skip_if_equal = false) {
-            bool added = false;
-            Node? result_node = null;
-            Node func(Node t)
-            {
-                if (is_nil(t))
-                {
-                    added = true;
-                    result_node = new Node() { val = val, prior = rnd.NextUInt() };
-                    return result_node;
-                }
-                push(t);
-                int cmp = Compare(val, t.val);
-                if (skip_if_equal && cmp == 0)
-                {
-                    result_node = t;
-                    return t;
-                }
-                if (cmp <= 0)
-                {
-                    var res = func(t.left);
-                    if (t.prior < res.prior)
-                    { // added=true, rotate
-                        var right_cnt = t.cnt - res.cnt;
-                        if (res.cnt <= right_cnt + right_cnt/2)
-                        {
-                            // skip rotation!
-                            (t.prior, res.prior) = (res.prior, t.prior);
-                            t.left = res; // can be changed
-                            if (added) t.cnt++;
-                            return t;
-                        }
-                        else
-                        {
-                            var res_right = res.right;
-                            res.right = t;
-                            t.left = res_right;
-                            res.cnt = t.cnt + 1;
-                            if (!is_nil(res.left)) t.cnt -= res.left.cnt;
-                            return res;
-                        }
-                    }
-                    else
-                    {
-                        if (added)
-                        {
-                            t.cnt++;
-                            t.left = res;  // can be change
-                        }
-                        return t;
-                    }
-                }
-                else
-                {
-                    var res = func(t.right);
-                    if (t.prior < res.prior)
-                    { //rotate
-                        var left_cnt = t.cnt - res.cnt;
-                        if (res.cnt <= left_cnt + left_cnt/2)
-                        {
-                            // skip rotation!
-                            (t.prior, res.prior) = (res.prior, t.prior);
-                            t.right = res; // can be changed
-                            if (added) t.cnt++;
-                            return t;
-                        }
-                        else
-                        {
-                            var res_left = res.left;
-                            res.left = t;
-                            t.right = res_left;
-                            res.cnt = t.cnt + 1;
-                            if (!is_nil(res.right)) t.cnt -= res.right.cnt;
-                            return res;
-                        }
-                    }
-                    else
-                    {
-                        if (added)
-                        {
-                            t.cnt++;
-                            t.right = res;
-                        }
-                        return t;
-                    }
-                }
-            }
-            root = func(root);
-            return (added, result_node);
-        }
         protected bool _Contains(T node) {
             var t = root;
             while (!is_nil(t)) {
@@ -202,7 +98,7 @@ namespace AlgoQuora {
             return merge_no_check(left, right);
         }
         protected Node merge_no_check(Node left, Node right) { // both must be not nil
-            if (left.prior > right.prior) {
+            if (left.cnt > right.cnt) {
                 push(left);
                 left.cnt += right.cnt;
                 left.right = is_nil(left.right) ? right : merge_no_check(left.right, right);
@@ -273,6 +169,9 @@ namespace AlgoQuora {
             int i = _First(check, l);
             return new(i, i <= r);
         }
+        public void Clear() {
+            root = null;// new Node { cnt = 0 };
+        }
         protected int _RemoveAllOf(T node) {
             int func(ref Node t) {
                 if (is_nil(t)) return 0;
@@ -294,8 +193,107 @@ namespace AlgoQuora {
             }
             return func(ref root);
         }
-    }
+        Node rotate_left(Node t, Node left) {
+            var res_right = left.right;
+            left.right = t;
+            t.left = res_right;
+            left.cnt = t.cnt;
+            if (!is_nil(left.left)) t.cnt -= left.left.cnt;
+            t.cnt--;
+            return left;
+        }
+        Node rotate_right(Node t, Node right) {
+            var res_left = right.left;
+            right.left = t;
+            t.right = res_left;
+            right.cnt = t.cnt;
+            if (!is_nil(right.right)) t.cnt -= right.right.cnt;
+            t.cnt--;
+            return right;
+        }
 
+        static readonly double alp = new Random().NextDouble() * 0.1 + 2.35;
+        [MethodImpl(256)] int alpha_weight(int v) => (int)Math.Ceiling(v *alp);
+
+        protected void check_violate(Node t) {
+            var a = cnt_safe(t.left);
+            var b = cnt_safe(t.right);
+            if (a > b) (a, b) = (b, a);
+            if (b > alpha_weight(a) && b != 1) {
+                //throw new Exception("tree violate rules");
+            }
+        }
+
+        [MethodImpl(256)]
+        void maintaince(ref Node t, Node res, bool left) {
+            var cnt_other = t.cnt - res.cnt - 1;
+            if (res.cnt <= alpha_weight(cnt_other)) return;
+            if (left) {
+                var res_left_cnt = cnt_safe(res.left);
+                if (alpha_weight(res_left_cnt) >= res.cnt - res_left_cnt + cnt_other) {
+                    t = rotate_left(t, res);
+                    return;
+                }
+                res = rotate_right(res, res.right);
+                t = rotate_left(t, res);
+            } else {
+                var res_right_cnt = cnt_safe(res.right);
+                if (alpha_weight(res_right_cnt) >= res.cnt - res_right_cnt + cnt_other) {
+                    t = rotate_right(t, res);
+                    return;
+                }
+                res = rotate_left(res, res.left);
+                t = rotate_right(t, res);
+            }
+
+        }
+        protected (bool added, Node node) _Add(T val, bool skip_if_equal = false) {
+            if (is_nil(root)) {
+                root = new Node { val = val };
+                return (true, root);
+            }
+            bool added = false;
+            Node? result_node = null;
+            Node func(Node t) {
+                int cmp = Compare(val, t.val);
+                if (skip_if_equal && cmp == 0) {
+                    result_node = t;
+                    return t;
+                }
+                if (cmp <= 0) {
+                    if (t.left == null) {
+                        added = true;
+                        result_node = new Node { val = val };
+                        t.left = result_node;
+                        t.cnt++;
+                    } else {
+                        var res = func(t.left);
+                        if (!added) return t;
+                        t.left = res;
+                        t.cnt++;
+                        maintaince(ref t, res, true);
+                    }
+                } else {
+                    if (t.right == null) {
+                        added = true;
+                        result_node = new Node { val = val };
+                        t.right = result_node;
+                        t.cnt++;
+                    } else {
+                        var res = func(t.right);
+                        if (!added) return t;
+                        t.right = res;
+                        t.cnt++;
+                        maintaince(ref t, res, false);
+                    }
+                }
+                return t;
+            }
+            root = func(root);
+            return (added, result_node);
+        }
+    }
+    
     public class SortedList<T> : _CartesianBase<T> {
 
         public T this[Index key] {
